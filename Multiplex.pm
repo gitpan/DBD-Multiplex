@@ -1,29 +1,28 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
+# vim: ts=8:sw=4
+#
+# $Id: Multiplex.pm,v 1.9.4 2002/11/11 00:01:01 timbo Exp $
+#
+# Copyright (c) 1999,2002,2003 Tim Bunce & Thomas Kishel
+#
+# You may distribute under the terms of either the GNU General Public
+# License or the Artistic License, as specified in the Perl README file.
 
 { #=================================================================== DBD ===
 
 package DBD::Multiplex;
 
-require DBI;
-
-$DBI::dbi_debug = 1;
+use DBI;
 
 @EXPORT = ();
-$VERSION = substr(q$Revision: 1.9 $, 9,-1) -1;
-
-# $Id: Multiplex.pm,v 1.9.3 2002/11/11 00:01:01 timbo Exp $
-#
-# Copyright (c) 1999, Tim Bunce && Thomas Kishel
-#
-# You may distribute under the terms of either the GNU General Public
-# License or the Artistic License, as specified in the Perl README file.
 
 use strict;
-
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
+$VERSION = sprintf("%d.%02d", q$Revision: 1.94 $ =~ /(\d+)\.(\d+)/o);
+
 $drh = undef;	# Holds driver handle once it has been initialized.
-$err = 0;	# Holds error code for $DBI::err.
+$err = 0;		# Holds error code for $DBI::err.
 $errstr = '';	# Holds error string for $DBI::errstr.
 $sqlstate = '';	# Holds SQL state for $DBI::state.
 
@@ -295,8 +294,9 @@ sub connect {
 		# Remove the datasource id from the driver name.
 		# There is no standard for the text following the driver name.
 		# Each driver is free to use whatever syntax it wants.
-		$dsn =~ /mx_id=(\w+)/i;
+		$dsn =~ /;?mx_id=(.+);?/i;
 		$mx_id = $1;
+		$mx_id =~ s/;//g;
 		$dsn =~ s/;?mx_id=$mx_id;?/;/;
 		$dsn =~ s/^;|;$//;
 
@@ -653,10 +653,10 @@ DBD::Multiplex - A multiplexing driver for the DBI.
 
  # Define four databases, in this case, four Postgres databases.
  
- $dsn1 = 'dbi:Pg:dbname=aaa;host=10.0.0.1;mx_id=db-aaa-1';
- $dsn2 = 'dbi:Pg:dbname=bbb;host=10.0.0.2;mx_id=db-bbb-2';
- $dsn3 = 'dbi:Pg:dbname=ccc;host=10.0.0.3;mx_id=db-ccc-3';
- $dsn4 = 'dbi:Pg:dbname=ddd;host=10.0.0.4;mx_id=db-ddd-4';
+ $dsn1 = 'dbi:Pg:dbname=aaa;host=10.0.0.1;mx_id=dbaaa1';
+ $dsn2 = 'dbi:Pg:dbname=bbb;host=10.0.0.2;mx_id=dbbbb2';
+ $dsn3 = 'dbi:Pg:dbname=ccc;host=10.0.0.3;mx_id=dbccc3';
+ $dsn4 = 'dbi:Pg:dbname=ddd;host=10.0.0.4;mx_id=dbddd4';
 
  # Define a callback error handler.
  
@@ -673,7 +673,7 @@ DBD::Multiplex - A multiplexing driver for the DBI.
  
  %attr = (
 	'mx_dsns' => [$dsn1, $dsn2, $dsn3, $dsn4],
-	'mx_master_id' => 'db-aaa-1',
+	'mx_master_id' => 'dbaaa1',
 	'mx_connect_mode' => 'ignore_errors',
 	'mx_exit_mode' => 'first_success',
 	'mx_error_proc' => \&MyErrorProcedure,
@@ -687,17 +687,21 @@ DBD::Multiplex - A multiplexing driver for the DBI.
 
 =head1 DESCRIPTION
 
-DBD::Multiplex is a Perl module which works with the DBI
-to provide access to multiple datasources using singular DBI calls.
+DBD::Multiplex is a Perl module which works with the DBI allowing you
+to work with multiple datasources using a single DBI handle.
 
-The most obvious use of this module is to mirror the contents
-of one datasource using a set of alternate datasources.
+Basically, DBD::Multiplex database and statement handles are parents
+that contain multiple child handles, one for each datasource. Method
+calls on the parent handle trigger corresponding method calls on
+each of the children.
 
-One typical methodology is to write to all datasources, 
-but read from only from one datasource.
+One use of this module is to mirror the contents of one datasource
+using a set of alternate datasources.  For that scenario it can
+write to all datasources, but read from only from one datasource.
 
-Basically, DBD::Multiplex database and statement handles
-are parents that store multiple child handles, one for each datasource.
+Alternatively, where a database already supports replication,
+DBD::Multiplex can be used to direct writes to the master and spread
+the selects across multiple slaves.
 
 =head1 COMPATIBILITY
 
@@ -712,9 +716,6 @@ Multiple datasources are specified in the either the DSN parameter of
 the DBI->connect() function (separated by the '|' character), 
 or in the 'mx_dsns' key/value pair (as an array reference) of 
 the \%attr hash parameter.
-
-To use the mx_error_proc feature, you must include a unique 
-'mx_id' key/value pair in the DSN of each datasource.
 
 =head1 SPECIFIC ATTRIBUTES
 
@@ -805,6 +806,7 @@ the 'mx_exit_mode' attribute of a database or statement handle.
 =head1 USAGE EXAMPLE
 
 Here's an example of using DBD::Multiplex with MySQL's replication scheme. 
+
 MySQL supports one-way replication, which means we run a server as the master 
 server and others as slaves which catch up any changes made on the master. 
 Any READ operations then may be distributed among them (master and slave(s)), 
@@ -812,7 +814,7 @@ whereas any WRITE operation must B<only> be directed toward the master.
 Any changes happened on slave(s) will never get synchronized to other servers. 
 More detailed instructions on how to arrange such setup can be found at:
 
-http://www.mysql.com/documentation/mysql/bychapter/manual_Replication.html
+ http://dev.mysql.com/doc/mysql/en/Replication.html
 
 Now say we have two servers, one at 10.0.0.1 as a master, and one at 
 10.0.0.9 as a slave. The DSN for each server may be written like this:
@@ -856,17 +858,13 @@ Finally, we call DBI->connect():
 
 =head1 AUTHORS AND COPYRIGHT
 
-Copyright (c) 1999, Tim Bunce && Thomas Kishel
+Copyright (c) 1999,2000,2003, Tim Bunce & Thomas Kishel
 
 While I defer to Tim Bunce regarding the majority of this module,
 feel free to contact me for more information:
 
 	Thomas Kishel
-	Larson Texts, Inc.
-	1760 Norcross Road
-	Erie, PA 16510
-	tkishel@tdlc.com
-	814-461-8900
+	tjk725@yahoo.com
 
 You may distribute under the terms of either the GNU General Public
 License or the Artistic License, as specified in the Perl README file.
