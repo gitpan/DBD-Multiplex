@@ -18,11 +18,11 @@ Revision History
 
 # 11-01-2002	Thomas Kishel
 
-	Implemented generic error handling. 
+	Added generic error handling. 
 	Added empty DESTROY methods.
-	Corrected the return of multiple results. 
 	Added return of multiple results to example.pl.
 	Added connected dsn list attribute.
+	Corrected the return of multiple results. 
 	Normalized code and code formatting.
 
 # 08-24-2004	Thomas Kishel
@@ -33,3 +33,7 @@ Revision History
 
 	Added delete before assignment in mx_method_all and prepare.
 	Corrected mx_default_statement_mode.
+
+# 01-25-2005	Daniel J. Wright
+
+	Corrected the return of results for fetchrow_array.

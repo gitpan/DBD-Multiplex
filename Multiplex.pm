@@ -1,9 +1,9 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 1.9.5 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 1.9.6 2002/11/11 00:01:01 timbo Exp $
 #
-# Copyright (c) 1999,2002,2003 Tim Bunce & Thomas Kishel
+# Copyright (c) 1999,2005 Tim Bunce & Thomas Kishel
 #
 # You may distribute under the terms of either the GNU General Public
 # License or the Artistic License, as specified in the Perl README file.
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.95 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.96 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -86,20 +86,29 @@ sub mx_method_all {
 	%multiplex_options = ('parent_handle' => $parent_handle, 'exit_mode' => $exit_mode);
 	
 	($results, $errors) = &DBD::Multiplex::mx_do_calls ($method, wantarray, \%multiplex_options, @_);
-	
-	# find first valid result
+
+	# find first defined result
 	for (@$results) { 
 		$return_result = $_;
-		last if defined $_->[0];
+		last if defined $return_result->[0];
 	}
 
-	return $return_result->[0] unless (wantarray);
-
-	# find all valid results
+    # return first defined result
+    return $return_result->[0] unless wantarray;
+    
+    # The context of fetchrow_array (and selectrow_array ?) is wantarray,
+    # and therefore cannot be distinguished from a multiplexed scalar context.
+    # In this case, returning an array of results from multiple handles is incorrect.
+	if ( $method eq 'fetchrow_array' ) {
+		return @$return_result;
+	} 
+	
+	# find all defined results
 	for (@$results) {
 		push(@return_results, $_->[0]) if defined $_->[0];
 	}
-	
+
+    # return all defined results
 	return @return_results;
 }
 
