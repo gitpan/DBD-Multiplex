@@ -1,6 +1,6 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 
-{ #========================================================== DBD ===
+{ #=================================================================== DBD ===
 
 package DBD::Multiplex;
 
@@ -9,9 +9,9 @@ require DBI;
 $DBI::dbi_debug = 1;
 
 @EXPORT = ();
-$VERSION = substr(q$Revision: 1.8 $, 9,-1) -1;
+$VERSION = substr(q$Revision: 1.9 $, 9,-1) -1;
 
-# $Id: Multiplex.pm,v 1.8 2002/04/10 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 1.9.3 2002/11/11 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999, Tim Bunce && Thomas Kishel
 #
@@ -60,12 +60,13 @@ sub mx_method_all {
 	# Remember that shift modifies the parameter list.
 	my ($method, $parent_handle) = (shift, shift);
 
-	my ($exit_mode, %modes, %multiplex_options, $results, $errors, $result);
+	my ($exit_mode, %modes, %multiplex_options, $results, $errors);
+	my ($return_result, @return_results);
 	
 	$exit_mode  = $parent_handle->{'mx_exit_mode'};
 
-#	# TK Note: 
-#	# do() is a method of a database handle, not a statement handle.
+	# TK Note: 
+	# do() is a method of a database handle, not a statement handle.
 	if ($method eq 'do' or $method eq 'disconnect') {
 		$parent_handle->{'Statement'} = $_[0];
 	}
@@ -77,31 +78,29 @@ sub mx_method_all {
 		'STORE'		=> 'first_error',
 		'FETCH'		=> 'first_error',
 		'finish'	=> 'last_result',
-		'disconnect'	=> 'last_result');
+		'disconnect'	=> 'last_result'
+	);
 
 	$exit_mode = $modes{$method} if ($modes{$method});
 
-	%multiplex_options = (
-		'parent_handle' => $parent_handle, 
-		'exit_mode' => $exit_mode);
+	%multiplex_options = ('parent_handle' => $parent_handle, 'exit_mode' => $exit_mode);
 	
-	($results, $errors) = &DBD::Multiplex::mx_do_calls (
-		$method, 
-		wantarray, 
-		\%multiplex_options, 
-		@_);
+	($results, $errors) = &DBD::Multiplex::mx_do_calls ($method, wantarray, \%multiplex_options, @_);
 	
-	# find valid result
+	# find first valid result
 	for (@$results) { 
-		$result = $_, last if defined $_->[0];
+		$return_result = $_;
+		last if defined $_->[0];
 	}
 
-#	# EP Note:
-#	# original code: only takes the first result
-#	# $result = $results->[0];
+	return $return_result->[0] unless (wantarray);
 
-	return $result->[0] unless (wantarray);
-	return @$result;
+	# find all valid results
+	for (@$results) {
+		push(@return_results, $_->[0]) if defined $_->[0];
+	}
+	
+	return @return_results;
 }
 
 ########################################
@@ -115,45 +114,47 @@ sub mx_do_calls {
 	my ($method, $wantarray, $multiplex_options) = (shift, shift, shift);
 
 	# @errors is a sparse array paralleling $results[0..n]
-	my ($parent_handle, $handle_list, $id_list, $error_proc, $exit_mode);
+	my ($parent_handle, $parent_handle_list, $parent_name_list, $parent_id_list);
+	my ($error_proc, $exit_mode);
 	my ($child_handle, $child_number, @results, @errors);
 	my ($child_err, $child_errstr, $statement);
 
 	$parent_handle = $multiplex_options->{'parent_handle'} || die;
-	$handle_list = $parent_handle->{'mx_handle_list'} || die;
-	$id_list = $parent_handle->{'mx_id_list'};
+	$parent_handle_list = $parent_handle->{'mx_handle_list'} || die;
+	$parent_name_list = $parent_handle->{'mx_name_list'};
+	$parent_id_list = $parent_handle->{'mx_id_list'};
 	$exit_mode = $multiplex_options->{'exit_mode'} || 'first_error';
 	$error_proc = $parent_handle->{'mx_error_proc'};
 
-	$parent_handle->trace_msg("mx_do_calls $method for " .
-		join(", ", map{defined $_?$_:''} @$handle_list) . "\n");
+	$parent_handle->trace_msg("mx_do_calls $method for " . join(", ", map{defined $_?$_:''} @$parent_handle_list) . "\n");
 
 	$child_number = 0;
+	$statement = $parent_handle->{'Statement'};
 
-	# EP If master dsn is specified, and current statement is a
+	# EP Note: 
+	# If master dsn is specified, and current statement is a
 	# modification operation, make sure this is done on the master:
+	#
+	# If ($method eq 'do' || $method eq 'execute' and
+	# the above condition is wrong, because then _any_ prepare()
+	# will definitely go to second condition.
 
-#	# EP Note: 
-#	# If ($method eq 'do' || $method eq 'execute' and
-#	# the above condition is wrong, because then _any_ prepare()
-#	# will definitely go to second condition.
-
-	if  (
-		$statement = $parent_handle->{'Statement'} and 
-		&DBD::Multiplex::mx_is_modify_statement(\$statement) and
-		$parent_handle->{'mx_master_id'}) {
+	if  ($parent_handle->{'mx_master_id'} && &DBD::Multiplex::mx_is_modify_statement(\$statement)) {
 		
-#		# TK Note:
-#		# Consider finding once and storing rather than finding each time.
-
+		# TK Note:
 		# Loop to find the master handle.
-		for (@$id_list) { 
+		# Consider finding once and storing rather than finding each time.
+		for (@$parent_id_list) { 
 			last if $_ eq $parent_handle->{'mx_master_id'};
 			push @results, [undef];
 			$child_number++; 
 		}
 		
-		$child_handle = $handle_list->[$child_number];
+		if ($statement) {
+			$parent_handle->trace_msg("mx_do_calls $method for statement $statement against child number $child_number\n");
+		}
+
+		$child_handle = $parent_handle_list->[$child_number];
 		$results[$child_number] = ($wantarray) 
 			? [ $child_handle->$method(@_) ]
 			: [ scalar $child_handle->$method(@_) ];
@@ -164,20 +165,19 @@ sub mx_do_calls {
 			if ($parent_handle) {
 				&DBI::set_err($parent_handle, $child_err, $child_errstr);
 			}
-# 			# TK Note: 
-#			# Consider passing DBI error to error_proc.
 			if ($error_proc) {
-				&$error_proc->(${$id_list}[$child_number], $statement);
+				$error_proc->(${$parent_name_list}[$child_number], ${$parent_id_list}[$child_number], $child_err, $child_errstr);
 			}
 		}
 
 	} else {
 
-		foreach $child_handle (@$handle_list) {
+		foreach $child_handle (@$parent_handle_list) {
 
-			$parent_handle->trace_msg("mx_do_calls $method for statement " .
-				"$statement against child no. $child_number\n") if $statement;
-
+			if ($statement) {
+				$parent_handle->trace_msg("mx_do_calls $method for statement $statement against child number $child_number\n") ;
+			}
+			
 			# Here, the actual method being multiplexed is being called.
 			push @results, ($wantarray) 
 				? [ $child_handle->$method(@_) ]
@@ -190,13 +190,7 @@ sub mx_do_calls {
 					&DBI::set_err($parent_handle, $child_err, $child_errstr);
 				}
 				if ($error_proc) {
-#					# TK Note: Consider above EP Note.
-					if (($method eq 'do') || ($method eq 'execute')) {
-						$statement = $parent_handle->{'Statement'};
-						if (&DBD::Multiplex::mx_is_modify_statement(\$statement)) {
-							&$error_proc(${$id_list}[$child_number], $statement);
-						}
-					}
+					$error_proc->(${$parent_name_list}[$child_number], ${$parent_id_list}[$child_number], $child_err, $child_errstr);
 				}
 				last if ($exit_mode eq 'first_error');
 			} else {
@@ -214,33 +208,39 @@ sub mx_do_calls {
 ########################################
 # Identify if the statement modifies data in the datasource.
 # EP Added CREATE and DROP.
-# TK Consider adding INTO.
+# TK Consider when these words occur in the data of a statement.
 ########################################
 
 sub mx_is_modify_statement {
 	my ($statement) = @_;
 	
-	return ($$statement =~ /INSERT |UPDATE |DELETE |CREATE |DROP /i);
+	return 0 if (! $$statement);
+	
+	if ($$statement =~ /INSERT |UPDATE |DELETE |CREATE |DROP |INTO /i) {
+		return 1;
+	} else {
+	
+		return 0;
+	}
 }
 
 ########################################
-# Example statement error logging mechanism.
-# TK Note: 
-# Consider passing DBI error to error_proc.
+# Example error logging mechanism.
 ########################################
 
 sub mx_error_subroutine {
-	my ($datasource, $sql) = @_;
+	my ($dsn, $mx_id, $error, $error_string) = @_;
 	
-	print STDERR "ERROR: $datasource\n";
-	print STDERR "$sql\n\n";
+	print STDERR "DSN: $dsn\;mx_id\=$mx_id\n";
+	print STDERR "ERR: $error\n";
+	print STDERR "ERRSTR: $error_string\n";
 	
 	return 1;
 }
 
-} #====================================================== END DBD ===
+} #=============================================================== END DBD ===
 
-{ #======================================================= DRIVER ===
+{ #================================================================ DRIVER ===
 
 package DBD::Multiplex::dr;
 $imp_data_size = 0;
@@ -253,8 +253,8 @@ $imp_data_size = 0;
 sub connect { 
 	my ($drh, $dsn, $user, $auth, $attr) = @_;
 	
-	my (@dsn_list, $dbh, @dbh_list, $mx_id, @mx_id_list);
-	my ($connect_mode, $exit_mode, $error_proc, $this);
+	my (@dsn_list, $dbh, @mx_dsn_list, @mx_dbh_list, $mx_id, @mx_id_list);
+	my ($connect_mode, $stored_print_error, $exit_mode, $error_proc, $this);
 	my ($dsn_count, @dsn_order, $dsn_number);
 
 	# Retrieve the DSNs from the $dsn parameter.
@@ -277,12 +277,9 @@ sub connect {
 	# 'first_success_random' exit_mode is implemented only at connect time.
 	# Afterwards, revert to 'first_success' exit_mode.
 	
-#	# TK Note: 
-#	# Trying to implement randomness after this point fails.
-#	# This needs careful consideration.
-#	# Consider creating a new parameter; 
-#	# changing parameter into a connect_mode;
-#	# or rewriting randomness to work correctly at lower levels.
+	# TK Note: 
+	# Trying to implement randomness after this point fails.
+	# Consider creating a new parameter; changing parameter into a connect_mode; or rewriting randomness to work correctly at lower levels.
 	if ($exit_mode eq 'first_success_random') {
 		@dsn_order = &mx_rand_list($dsn_count - 1);	 
 		$attr->{'mx_exit_mode'} = 'first_success';
@@ -303,33 +300,42 @@ sub connect {
 		$dsn =~ s/;?mx_id=$mx_id;?/;/;
 		$dsn =~ s/^;|;$//;
 
+		# Suppress initial warnings when ignoring errors and not explicitly printing errors.
+		$stored_print_error = $$attr{'PrintError'};
+		if (($connect_mode eq 'ignore_errors') && ($stored_print_error)) {
+			$$attr{'PrintError'} = 0;
+		}
+
 		$dbh = DBI->connect($dsn, $user, $auth, $attr);
 		if ($dbh) {
-			push (@dbh_list, $dbh);
+			push (@mx_dsn_list, $dsn);
+			push (@mx_dbh_list, $dbh);
 			push (@mx_id_list, $mx_id);
+			$dbh->{'PrintError'} = $stored_print_error;
 		} else {
-			if ($connect_mode eq 'ignore_errors') {
-#				# TK Note:
-#				# Consider overriding 'ignore_errors' if this is the mx_master_id.
-			
-#				# TK Note: 
-#				# This needs careful consideration.
-#				# Consider implemening a blank handle, reconnect,
-#				# process queue, and then reintegrate into the pool after an outage.
-				# $dbh = DBI::_new_dbh($drh, {});
-				# push (@dbh_list, $dbh);
-				# push (@mx_id_list, $mx_id);
+			# Override the connect_mode if there is and this is the mx_master_id.
+			if ($attr->{'mx_master_id'} && ($attr->{'mx_master_id'} eq $mx_id)) {
+				return &DBI::set_err($drh, $DBI::err, $DBI::errstr);
+			} elsif ($connect_mode eq 'ignore_errors') {
+				# TK Note:
+				# Implement?
+				# &DBI::set_err($drh, $DBI::err, $DBI::errstr);
+				if ($error_proc) {
+					$error_proc->($dsn, $mx_id, $DBI::err, $DBI::errstr);
+				}
 			} else {
-				return DBI::set_err($drh, $DBI::err, $DBI::errstr);
+				return &DBI::set_err($drh, $DBI::err, $DBI::errstr);
 			}
 		}
 		
 	}
 	
+	# Name is an array of all dsns, mx_name_list is an array of all connected dsns.
 	$this = DBI::_new_dbh ($drh, {
 		'Name' => [@dsn_list],
 		'User' => $user,
-		'mx_handle_list' => [@dbh_list],
+		'mx_name_list' => [@mx_dsn_list],
+		'mx_handle_list' => [@mx_dbh_list],
 		'mx_id_list' => [@mx_id_list],
 		'mx_master_id' => $attr->{'mx_master_id'},
 		'mx_exit_mode' => $attr->{'mx_exit_mode'},
@@ -344,7 +350,7 @@ sub connect {
 ########################################
 
 sub disconnect_all {
-	
+
 }
 
 ########################################
@@ -368,9 +374,9 @@ sub mx_rand_list {
 	return @output;
 }
 
-} #=================================================== END DRIVER ===
+} #============================================================ END DRIVER ===
 
-{ #===================================================== DATABASE ===
+{ #============================================================== DATABASE ===
 
 package DBD::Multiplex::db; 
 	$imp_data_size = 0;
@@ -388,9 +394,10 @@ sub prepare {
 	my ($dbh) = shift;
 	my ($statement, $attr) = @_;
 
-	my ($parent_id_list, $parent_error_proc, $parent_exit_mode, $parent_master_id);
+	my ($parent_name_list, $parent_id_list, $parent_master_id, $parent_error_proc, $parent_exit_mode);
 	my ($exit_mode, %multiplex_options, $results, $errors, $outer, $sth);
 
+	$parent_name_list = $dbh->{'mx_name_list'};
 	$parent_id_list = $dbh->{'mx_id_list'};
 	$parent_master_id = $dbh->{'mx_master_id'};
 	$parent_exit_mode = $dbh->{'mx_exit_mode'};
@@ -407,15 +414,9 @@ sub prepare {
 	# Don't forget this!
 	$dbh->{'Statement'} = $statement;
 
-	%multiplex_options = (
-		'parent_handle' => $dbh,
-		'exit_mode' => $exit_mode);
+	%multiplex_options = ('parent_handle' => $dbh, 'exit_mode' => $exit_mode);
 
-	($results, $errors) = &DBD::Multiplex::mx_do_calls (
-		'prepare', 
-		wantarray, 
-		\%multiplex_options, 
-		@_);
+	($results, $errors) = &DBD::Multiplex::mx_do_calls ('prepare', wantarray, \%multiplex_options, @_);
 
 	return if (@$errors);
 
@@ -427,6 +428,7 @@ sub prepare {
 	($outer, $sth) = DBI::_new_sth ($dbh, {
 		'Statement' => $statement,
 		'mx_handle_list' => [map {$_->[0]} @$results],
+		'mx_name_list' => $parent_name_list,
 		'mx_id_list' => $parent_id_list,
 		'mx_master_id' => $parent_master_id,
 		'mx_exit_mode' => $parent_exit_mode,
@@ -480,6 +482,14 @@ sub FETCH {
 }
 
 ########################################
+# Required by the DBI.
+########################################
+
+sub DESTROY {
+	undef;
+}
+
+########################################
 # TK Note:
 # Replace this with dynamic information from updated DBI.
 # Needs expanding manually in the short term.
@@ -516,25 +526,25 @@ sub AUTOLOAD {
 # The resulting statement handle then contains only one child handle,
 # automatically resulting in subsequent methods executed against the 
 # statement handle to use 'first_success' mode.
-#
-# TK Note:
-# Consider a more efficient grep, or at least one similar in syntax to mx_is_modify_statement.
 ########################################
 
 sub mx_default_statement_mode {
 	my ($statement) = @_;
 	my ($result);
 	
-	if (($$statement !~ /INTO/i) && ($$statement =~ /^SELECT/i)) {
+	if (($$statement =~ /^SELECT/i) && ($$statement != /INSERT |UPDATE |DELETE |CREATE |DROP |INTO /i)) {
 		$result = 'first_success';
-	}
+	} else {
 	
+		$result = '';
+	}
+		
 	return $result;
 }
 
-} #================================================= END DATABASE ===
+} #========================================================== END DATABASE ===
 
-{ #==================================================== STATEMENT ===
+{ #============================================================= STATEMENT ===
 
 package DBD::Multiplex::st; 
 $imp_data_size = 0;
@@ -583,6 +593,14 @@ sub FETCH {
 }
 
 ########################################
+# Required by the DBI.
+########################################
+
+sub DESTROY {
+	undef;
+}
+
+########################################
 # TK Note:
 # Replace this with dynamic info from updated DBI.
 # Needs expanding manually in the short term.
@@ -615,7 +633,7 @@ sub AUTOLOAD {
 	return @results;
 }
 
-} #================================================ END STATEMENT ===
+} #========================================================= END STATEMENT ===
 
 1;
 
@@ -643,11 +661,11 @@ DBD::Multiplex - A multiplexing driver for the DBI.
  # Define a callback error handler.
  
  sub MyErrorProcedure {
-	my ($datasource, $sql) = @_;
+	my ($mx_id, $error_number, $error_string) = @_;
 	my ($filepath, $extension) = ('/tmp/', '.txt');
-	open (DSQL, ">>$filepath$datasource$extension");
-	print (DSQL "$sql\n");
-	close (DSQL);
+	open (TFH, ">>$filepath$mx_id$extension");
+	print (TFH "$error_number\t$error_string\n");
+	close (TFH);
 	return 1;
  }
 
@@ -658,7 +676,7 @@ DBD::Multiplex - A multiplexing driver for the DBI.
 	'mx_master_id' => 'db-aaa-1',
 	'mx_connect_mode' => 'ignore_errors',
 	'mx_exit_mode' => 'first_success',
-	'mx_error_proc' => \&MyErrorProcedure(),
+	'mx_error_proc' => \&MyErrorProcedure,
  );
 
  # Connect to all four datasources.
@@ -763,16 +781,16 @@ Not yet implemented.
 
 =item B<mx_error_proc>
 
-A reference to a subroutine which  will be executed whenever a 
-datasource fails to execute a SQL statement. It will be passed 
-the 'mx_id' of the datasource, and the SQL statement.
+A reference to a subroutine which will be executed whenever a DBI method 
+generates an error when working with a specific datasource. It will be 
+passed the DSN and 'mx_id' of the datasource, and the $DBI::err and $DBI::errstr.
 
 Define your own subrouine and pass a reference to it, 
 or pass a reference to the default error_proc:
 
-	\&DBD::Multiplex::mx_error_subroutine().
-
-To use this feature, you must identify each datasource with a mx_id. 
+	\&DBD::Multiplex::mx_error_subroutine
+	
+Remember that references to subroutines do not include parentheses.
 
 =back
 
