@@ -9,9 +9,9 @@ require DBI;
 $DBI::dbi_debug = 1;
 
 @EXPORT = ();
-$VERSION = substr(q$Revision: 1.7 $, 9,-1) -1;
+$VERSION = substr(q$Revision: 1.8 $, 9,-1) -1;
 
-# $Id: Multiplex.pm,v 1.7 2001/07/12 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 1.8 2002/04/10 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999, Tim Bunce && Thomas Kishel
 #
