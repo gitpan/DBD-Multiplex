@@ -1,27 +1,35 @@
 Revision History
 
-# Notes:
 # 10-10-1999	Thomas Kishel
 
-Implemented do().
+	Implemented do().
 
 # 07-12-2001	Edwin Pratomo
 
-Implemented explicit master/slave relationship.
+	Implemented explicit master/slave relationship.
 
 # 03-08-2002	Thomas Kishel	
 
-Trying to build a release.
+	Trying to build a release.
 
 # 04-10-2002	Thomas Kishel
 
-Building a release.
+	Building a release.
 
 # 11-01-2002	Thomas Kishel
 
-Implemented generic error handling. 
-Added empty DESTROY methods.
-Corrected the return of multiple results. 
-Added return of multiple results to example.pl.
-Added connected dsn list attribute.
-Normalized code and code formatting.
+	Implemented generic error handling. 
+	Added empty DESTROY methods.
+	Corrected the return of multiple results. 
+	Added return of multiple results to example.pl.
+	Added connected dsn list attribute.
+	Normalized code and code formatting.
+
+# 08-24-2004	Thomas Kishel
+
+	Corrected documentation.
+
+# 09-01-2004	Pat Deegan
+
+	Added delete before assignment in mx_method_all and prepare.
+	Corrected mx_default_statement_mode.

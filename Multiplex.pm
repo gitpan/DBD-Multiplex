@@ -1,7 +1,7 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 1.9.4 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 1.9.5 2002/11/11 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999,2002,2003 Tim Bunce & Thomas Kishel
 #
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.94 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.95 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -67,6 +67,7 @@ sub mx_method_all {
 	# TK Note: 
 	# do() is a method of a database handle, not a statement handle.
 	if ($method eq 'do' or $method eq 'disconnect') {
+		delete $parent_handle->{'Statement'}; # PD
 		$parent_handle->{'Statement'} = $_[0];
 	}
 	
@@ -412,6 +413,7 @@ sub prepare {
 	}
 
 	# Don't forget this!
+	delete $dbh->{Statement}; # PD
 	$dbh->{'Statement'} = $statement;
 
 	%multiplex_options = ('parent_handle' => $dbh, 'exit_mode' => $exit_mode);
@@ -532,10 +534,9 @@ sub mx_default_statement_mode {
 	my ($statement) = @_;
 	my ($result);
 	
-	if (($$statement =~ /^SELECT/i) && ($$statement != /INSERT |UPDATE |DELETE |CREATE |DROP |INTO /i)) {
+	if (($$statement =~ /^SELECT/i) && ($$statement !~ /INSERT |UPDATE |DELETE |CREATE |DROP |INTO /i)) {
 		$result = 'first_success';
 	} else {
-	
 		$result = '';
 	}
 		
