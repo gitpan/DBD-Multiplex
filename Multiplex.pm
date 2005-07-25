@@ -1,7 +1,7 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 1.9.6 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 1.9.7 2002/11/11 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999,2005 Tim Bunce & Thomas Kishel
 #
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.96 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.97 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -266,22 +266,44 @@ sub connect {
 	my ($connect_mode, $stored_print_error, $exit_mode, $error_proc, $this);
 	my ($dsn_count, @dsn_order, $dsn_number);
 
+	# Retrieve the DSNs and ATTRs from the $dsn parameter.
+	my ($dsn_attr, $dsn_attr_mx_connect_mode, $dsn_attr_exit_mode);
+	($dsn, $dsn_attr) = split (/\#/, $dsn);
+
 	# Retrieve the DSNs from the $dsn parameter.
 	@dsn_list = split (/\|/, $dsn);
 	
 	# Add the DSNs from the attribute hashref parameter.
-	foreach (@{$$attr{'mx_dsns'}}) {
+	foreach (@{$attr->{'mx_dsns'}}) {
 		push (@dsn_list, $_);
 	}
-	
 	$dsn_count = @dsn_list;
+
+	# Retrieve valid attributes from the $dsn parameter.
+	if ($dsn_attr =~ /;?mx_connect_mode=(\w+);?/i) {
+		$dsn_attr_mx_connect_mode = $1;
+		undef $dsn_attr_mx_connect_mode if (! &mx_valid_mx_connect_mode($dsn_attr_mx_connect_mode));
+	}
+	if ($dsn_attr =~ /;?mx_exit_mode=(\w+);?/i) {
+		$dsn_attr_exit_mode = $1;
+		undef $dsn_attr_exit_mode if (! &mx_valid_mx_exit_mode($dsn_attr_exit_mode));
+	}
+
+	# Clear invalid attribute hashref parameters.
+	undef $attr->{'mx_connect_mode'} if (! &mx_valid_mx_connect_mode($attr->{'mx_connect_mode'}));
+	undef $attr->{'mx_exit_mode'} if (! &mx_valid_mx_exit_mode($attr->{'mx_exit_mode'}));
+	undef $attr->{'mx_error_proc'} if (! ref($attr->{'mx_error_proc'}));
+
+	# Prefer attributes from the attribute hashref over $dsn parameters.
+	$attr->{'mx_connect_mode'} = ($attr->{'mx_connect_mode'} || $dsn_attr_mx_connect_mode);
+	$attr->{'mx_exit_mode'} = ($attr->{'mx_exit_mode'} || $dsn_attr_exit_mode);
 
 	# connect_mode decides what to do with DBI->connect errors.
 	# exit_mode decides when to exit the foreach loop.
 	# error_proc is a code reference to execute in case of an execute error.
-	$connect_mode = ($$attr{'mx_connect_mode'} || 'report_errors');
-	$exit_mode = $$attr{'mx_exit_mode'} || 'first_error';
-	$error_proc = $$attr{'mx_error_proc'} || '';
+	$connect_mode = ($attr->{'mx_connect_mode'} || 'report_errors');
+	$exit_mode = ($attr->{'mx_exit_mode'} || 'first_error');
+	$error_proc = $attr->{'mx_error_proc'};
 
 	# 'first_success_random' exit_mode is implemented only at connect time.
 	# Afterwards, revert to 'first_success' exit_mode.
@@ -304,16 +326,16 @@ sub connect {
 		# Remove the datasource id from the driver name.
 		# There is no standard for the text following the driver name.
 		# Each driver is free to use whatever syntax it wants.
-		$dsn =~ /;?mx_id=(.+);?/i;
-		$mx_id = $1;
-		$mx_id =~ s/;//g;
-		$dsn =~ s/;?mx_id=$mx_id;?/;/;
-		$dsn =~ s/^;|;$//;
-
+		if ($dsn =~ /;?mx_id=(\w+);?/i) {
+			$mx_id = $1;
+			$dsn =~ s/;?mx_id=$mx_id;?/;/;
+			$dsn =~ s/^;|;$//;
+		}
+		
 		# Suppress initial warnings when ignoring errors and not explicitly printing errors.
-		$stored_print_error = $$attr{'PrintError'};
+		$stored_print_error = $attr->{'PrintError'};
 		if (($connect_mode eq 'ignore_errors') && ($stored_print_error)) {
-			$$attr{'PrintError'} = 0;
+			$attr->{'PrintError'} = 0;
 		}
 
 		$dbh = DBI->connect($dsn, $user, $auth, $attr);
@@ -360,7 +382,7 @@ sub connect {
 ########################################
 
 sub disconnect_all {
-
+	undef;
 }
 
 ########################################
@@ -382,6 +404,40 @@ sub mx_rand_list {
 	push(@output, splice (@input, rand(@input), 1)) while (@input);
 	
 	return @output;
+}
+
+########################################
+# Parameter validation.
+########################################
+
+sub mx_valid_mx_connect_mode {
+	my ($mode) = @_;
+	
+	my (%modes);
+	%modes = (
+		'report_errors', => 1, 
+		'ignore_errors' => 1
+	);
+	
+	return ($modes{$mode});
+}
+
+########################################
+# Parameter validation.
+########################################
+
+sub mx_valid_mx_exit_mode {
+	my ($mode) = @_;
+	
+	my (%modes);
+	%modes = (
+		'first_error', => 1,
+		'first_success' => 1,
+		'first_success_random', => 1,
+		'last_result', => 1
+	);
+	
+	return ($modes{$mode});
 }
 
 } #============================================================ END DRIVER ===
@@ -724,10 +780,15 @@ which in turn is used by DBD::Proxy. Yet it works.
 
 Multiple datasources are specified in the either the DSN parameter of
 the DBI->connect() function (separated by the '|' character), 
-or in the 'mx_dsns' key/value pair (as an array reference) of 
-the \%attr hash parameter.
+and/or in the 'mx_dsns' key/value pair (as an array reference) of 
+the \%attr parameter.
 
 =head1 SPECIFIC ATTRIBUTES
+
+Multiplex attributes are specified in the either the DSN parameter of
+the DBI->connect() function (separated from the DSNs by the '#' character), 
+and/or in the the \%attr parameter. Attributes in the \%attr parameter
+will overwrite attributes from the DSN parameter.
 
 The following specific attributes can be set when connecting:
 
@@ -801,7 +862,7 @@ or pass a reference to the default error_proc:
 
 	\&DBD::Multiplex::mx_error_subroutine
 	
-Remember that references to subroutines do not include parentheses.
+Remember that references to subroutines do not include the parentheses.
 
 =back
 

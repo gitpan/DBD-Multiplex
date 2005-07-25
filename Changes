@@ -37,3 +37,7 @@ Revision History
 # 01-25-2005	Daniel J. Wright
 
 	Corrected the return of results for fetchrow_array.
+
+# 07-19-2005	David Muir Sharnof
+
+	Added ability to pass attributes (other than mx_error_proc) in DSN parameter.
