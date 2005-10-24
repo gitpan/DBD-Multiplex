@@ -41,3 +41,7 @@ Revision History
 # 07-19-2005	David Muir Sharnof
 
 	Added ability to pass attributes (other than mx_error_proc) in DSN parameter.
+
+# 10-24-2005	Satoshi Tanimoto 
+
+	Improved SQL statement parsing.

@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.97 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.98 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -225,7 +225,7 @@ sub mx_is_modify_statement {
 	
 	return 0 if (! $$statement);
 	
-	if ($$statement =~ /INSERT |UPDATE |DELETE |CREATE |DROP |INTO /i) {
+	if ($$statement =~ /INSERT\s|UPDATE\s|DELETE\s|CREATE\s|DROP\s|INTO\s/i) {
 		return 1;
 	} else {
 	
@@ -599,7 +599,7 @@ sub mx_default_statement_mode {
 	my ($statement) = @_;
 	my ($result);
 	
-	if (($$statement =~ /^SELECT/i) && ($$statement !~ /INSERT |UPDATE |DELETE |CREATE |DROP |INTO /i)) {
+	if (($$statement =~ /^SELECT/i) && ($$statement !~ /INSERT\s|UPDATE\s|DELETE\s|CREATE\s|DROP\s|INTO\s/i)) {
 		$result = 'first_success';
 	} else {
 		$result = '';
