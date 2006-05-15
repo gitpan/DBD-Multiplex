@@ -45,3 +45,9 @@ Revision History
 # 10-24-2005	Satoshi Tanimoto 
 
 	Improved SQL statement parsing.
+
+# 05-15-2006	Rhesa Rozendaal
+
+	Added transaction support.
+
+	
