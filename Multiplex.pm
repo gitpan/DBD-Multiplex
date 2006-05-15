@@ -3,7 +3,7 @@
 #
 # $Id: Multiplex.pm,v 1.9.7 2002/11/11 00:01:01 timbo Exp $
 #
-# Copyright (c) 1999,2005 Tim Bunce & Thomas Kishel
+# Copyright (c) 1999,2006 Tim Bunce & Thomas Kishel
 #
 # You may distribute under the terms of either the GNU General Public
 # License or the Artistic License, as specified in the Perl README file.
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.98 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.99 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -148,7 +148,12 @@ sub mx_do_calls {
 	# the above condition is wrong, because then _any_ prepare()
 	# will definitely go to second condition.
 
-	if  ($parent_handle->{'mx_master_id'} && &DBD::Multiplex::mx_is_modify_statement(\$statement)) {
+	# RR Note:
+	# Transactions are run only on the master.
+
+	if  ( $parent_handle->{'mx_master_id'} && 
+		( &DBD::Multiplex::mx_is_modify_statement(\$statement) || (! $parent_handle->{'AutoCommit'}) )
+		) {
 		
 		# TK Note:
 		# Loop to find the master handle.
@@ -929,13 +934,16 @@ Finally, we call DBI->connect():
 
 =head1 AUTHORS AND COPYRIGHT
 
-Copyright (c) 1999,2000,2003, Tim Bunce & Thomas Kishel
+Copyright (c) 1999,2006, Tim Bunce & Thomas Kishel
 
 While I defer to Tim Bunce regarding the majority of this module,
 feel free to contact me for more information:
 
-	Thomas Kishel
-	tjk725@yahoo.com
+Thomas Kishel
+	
+	tkishel + perl @ gmail . com
+
+(remove spaces)
 
 You may distribute under the terms of either the GNU General Public
 License or the Artistic License, as specified in the Perl README file.
