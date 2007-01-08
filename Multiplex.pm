@@ -1,7 +1,7 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 1.9.7 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 2.0.0 2002/11/11 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999,2006 Tim Bunce & Thomas Kishel
 #
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.99 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.00 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -222,20 +222,23 @@ sub mx_do_calls {
 ########################################
 # Identify if the statement modifies data in the datasource.
 # EP Added CREATE and DROP.
-# TK Consider when these words occur in the data of a statement.
+# MS #24220 One of these keywords must appear as the first word in the SQL. I believe this is what pgpool does.
+# MS #24219 Support SELECTs that modify.
 ########################################
 
 sub mx_is_modify_statement {
 	my ($statement) = @_;
 	
-	return 0 if (! $$statement);
-	
-	if ($$statement =~ /INSERT\s|UPDATE\s|DELETE\s|CREATE\s|DROP\s|INTO\s/i) {
-		return 1;
-	} else {
-	
-		return 0;
+	my ($rv) = 0;
+		
+	SWITCH: {
+		if (! $$statement) { $rv = 0; last SWITCH; }
+		if ($$statement =~ /^\s*INSERT\s|^\s*UPDATE\s|^\s*DELETE\s|^\s*CREATE\s|^\s*DROP\s/i) { $rv = 1; last SWITCH; }
+		if ($$statement =~ /^\s*SELECT(.*?)INTO\s/i) { $rv = 1; last SWITCH; }
+		if ($$statement =~ /^\s*SELECT(.*?)NEXTVAL|SETVAL\s/i) { $rv = 1; last SWITCH; }
 	}
+	
+	return $rv;
 }
 
 ########################################
@@ -262,6 +265,7 @@ $imp_data_size = 0;
 ########################################
 # The database handle constructor.
 # This function cannot be called using mx_method_all.
+# DW #11244
 ########################################
 
 sub connect { 

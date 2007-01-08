@@ -50,4 +50,10 @@ Revision History
 
 	Added transaction support.
 
+# 01-07-2007	Mark Stos
+
+	#24220 Some SELECTs were being falsely classifed as "modifying" statements.
+	#24219 Support SELECTs that modify.
+
+
 	
