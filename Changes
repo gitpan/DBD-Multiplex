@@ -55,5 +55,8 @@ Revision History
 	#24220 Some SELECTs were being falsely classifed as "modifying" statements.
 	#24219 Support SELECTs that modify.
 
+# 06-25-2007    Thomas Kishel
 
-	
+	# Remeber COPY_EXTENDED_ATTRIBUTES_DISABLE!
+	# Module cleanup.
+

@@ -8,10 +8,10 @@ use ExtUtils::MakeMaker;
 WriteMakefile (
 	dbd_edit_mm_attribs( 
 		{
-			'NAME'			=>	'DBD::Multiplex',
-			'VERSION_FROM'	=>	'Multiplex.pm'
-			'INC'			=>	$DBI_INC_DIR,
-			'dist'			=>	{ COMPRESS => gzip, SUFFIX => '.gz'},
+			'NAME'		=>	'DBD::Multiplex',
+			'VERSION_FROM'	=>	'Multiplex.pm',
+			'INC'		=>	$DBI_INC_DIR,
+			'dist'		=>	{ COMPRESS => gzip, SUFFIX => '.gz'},
 		},
 		{
 			create_pp_tests	=>	1
