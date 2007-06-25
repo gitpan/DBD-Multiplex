@@ -1,6 +1,10 @@
 Changes
-example.pl
 MANIFEST
+META.yml
 Makefile.PL
 Multiplex.pm
+README
+example.pl
+t/test.t
 test.pl
+

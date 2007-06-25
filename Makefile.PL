@@ -12,6 +12,7 @@ WriteMakefile (
 			'VERSION_FROM'	=>	'Multiplex.pm',
 			'INC'		=>	$DBI_INC_DIR,
 			'dist'		=>	{ COMPRESS => gzip, SUFFIX => '.gz'},
+			'realclean'	=>	{ FILES => '*.xsi' },
 		},
 		{
 			create_pp_tests	=>	1
