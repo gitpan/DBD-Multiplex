@@ -57,6 +57,11 @@ Revision History
 
 # 06-25-2007    Thomas Kishel
 
-	# Remeber COPY_EXTENDED_ATTRIBUTES_DISABLE!
+	# Remember COPY_EXTENDED_ATTRIBUTES_DISABLE!
 	# Module cleanup.
 
+# 12-24-2007    Thomas Kishel
+
+	Fixed Bug ID: 31768
+	Old list for DBI functions "Line 576". 
+	Not found info functions like column_info etc.

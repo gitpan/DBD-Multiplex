@@ -1,7 +1,7 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 2.05 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 2.04 2002/11/11 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999,2006 Tim Bunce & Thomas Kishel
 #
@@ -566,12 +566,17 @@ sub DESTROY {
 }
 
 ########################################
-# Used by AUTOLOAD below. Omit 'prepare'.
+# TK Note:
+# Replace this with dynamic information from updated DBI.
+# Needs expanding manually in the short term.
+# Look at %DBI_IF in DBI.pm for details.
 ########################################
 
-my %db_methods = %{$DBI::DBI_methods{db}};
-delete($db_methods{'prepare'});
-use subs keys %db_methods;
+use subs qw(
+		do disconnect ping tables table_info
+		commit rollback
+		selectall_arrayref selectall_array selectcol_arrayref
+		);
 
 ######################################## 
 # Call the multiplexing code for each of the database methods listed above.
@@ -671,10 +676,18 @@ sub DESTROY {
 }
 
 ########################################
-# Used by AUTOLOAD below.
+# TK Note:
+# Replace this with dynamic info from updated DBI.
+# Needs expanding manually in the short term.
+# Look at %DBI_IF in DBI.pm for details.
 ########################################
 
-use subs keys %{$DBI::DBI_methods{st}};
+use subs qw(
+		fetch fetchrow 
+		fetchrow_array fetchrow_arrayref fetchrow_hashref
+		bind_param bind_col bind_columns
+		rows execute finish
+		);
 
 ########################################
 # Call the multiplexing code for each of the statement methods listed above.
