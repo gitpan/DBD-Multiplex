@@ -1,9 +1,9 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 2.06 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 2.07 2002/11/11 00:01:01 timbo Exp $
 #
-# Copyright (c) 1999,2006 Tim Bunce & Thomas Kishel
+# Copyright (c) 1999,2008 Tim Bunce & Thomas Kishel
 #
 # You may distribute under the terms of either the GNU General Public
 # License or the Artistic License, as specified in the Perl README file.
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 2.06 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.07 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -270,7 +270,7 @@ $imp_data_size = 0;
 
 sub connect { 
 	my ($drh, $dsn, $user, $auth, $attr) = @_;
-	
+
 	my (@dsn_list, $dbh, @mx_dsn_list, @mx_dbh_list, $mx_id, @mx_id_list);
 	my ($connect_mode, $stored_print_error, $exit_mode, $error_proc, $this);
 	my ($dsn_count, @dsn_order, $dsn_number);
@@ -280,7 +280,7 @@ sub connect {
 	($dsn, $dsn_attr) = split (/\#/, $dsn);
 
 	# Retrieve the DSNs from the $dsn parameter.
-	@dsn_list = split (/\|/, $dsn);
+	@dsn_list = split (/\|/, $dsn) if defined $dsn;
 	
 	# Add the DSNs from the attribute hashref parameter.
 	foreach (@{$attr->{'mx_dsns'}}) {
@@ -289,11 +289,11 @@ sub connect {
 	$dsn_count = @dsn_list;
 
 	# Retrieve valid attributes from the $dsn parameter.
-	if ($dsn_attr =~ /;?mx_connect_mode=(\w+);?/i) {
+	if (defined $dsn_attr && $dsn_attr =~ /;?mx_connect_mode=(\w+);?/i) {
 		$dsn_attr_mx_connect_mode = $1;
 		undef $dsn_attr_mx_connect_mode if (! &mx_valid_mx_connect_mode($dsn_attr_mx_connect_mode));
 	}
-	if ($dsn_attr =~ /;?mx_exit_mode=(\w+);?/i) {
+	if (defined $dsn_attr && $dsn_attr =~ /;?mx_exit_mode=(\w+);?/i) {
 		$dsn_attr_exit_mode = $1;
 		undef $dsn_attr_exit_mode if (! &mx_valid_mx_exit_mode($dsn_attr_exit_mode));
 	}
@@ -925,7 +925,7 @@ Finally, we call DBI->connect():
 
 =head1 AUTHORS AND COPYRIGHT
 
-Copyright (c) 1999,2006, Tim Bunce & Thomas Kishel
+Copyright (c) 1999,2008, Tim Bunce & Thomas Kishel
 
 While I defer to Tim Bunce regarding the majority of this module,
 feel free to contact me for more information:

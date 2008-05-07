@@ -57,7 +57,7 @@ Revision History
 
 # 06-25-2007    Thomas Kishel
 
-	# Remember COPY_EXTENDED_ATTRIBUTES_DISABLE!
+	# Remember to export COPY_EXTENDED_ATTRIBUTES_DISABLE=true before tar.
 	# Module cleanup.
 
 # 12-24-2007    Thomas Kishel
@@ -65,3 +65,9 @@ Revision History
 	Fixed Bug ID: 31768
 	Old list for DBI functions "Line 576". 
 	Not found info functions like column_info etc.
+
+# 05-07-2008    Naoki Urai
+
+	Added tests to avoid "Use of uninitialized value" warnings. 
+	
+	Naoki URAI
