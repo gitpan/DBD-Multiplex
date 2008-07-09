@@ -1,31 +1,10 @@
-use DBI;
-use DBI::DBD;
-
 use ExtUtils::MakeMaker;
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence the contents of the Makefile that is written.
 
 WriteMakefile (
-	dbd_edit_mm_attribs( 
-		{
-			'NAME'		=>	'DBD::Multiplex',
-			'VERSION_FROM'	=>	'Multiplex.pm',
-			'INC'		=>	$DBI_INC_DIR,
-			'dist'		=>	{ COMPRESS => gzip, SUFFIX => '.gz'},
-			'realclean'	=>	{ FILES => '*.xsi' },
-		},
-		{
-			create_pp_tests	=>	1
-		}
-	)
+		'NAME'			=> 'DBD::Multiplex',
+		'VERSION_FROM'	=> 'lib/DBD/Multiplex.pm',
+		'AUTHOR'		=> 'Thomas Kishel <tkishel+perl@gmail.com>',
+		'PREREQ_PM'		=> { DBI::DBD => 1 },
 );
-
-package MY;
-
-sub postamble { return main::dbd_postamble(@_); }
-
-sub libscan {
-	my ($self, $path) = @_;
-	
-	($path =~ m/\~$/) ? undef : $path;
-}

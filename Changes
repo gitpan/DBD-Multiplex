@@ -57,7 +57,7 @@ Revision History
 
 # 06-25-2007    Thomas Kishel
 
-	# Remember to export COPY_EXTENDED_ATTRIBUTES_DISABLE=true before tar.
+	# Remember to export COPY_EXTENDED_ATTRIBUTES_DISABLE=true before tar on MacOSX 10.4.
 	# Module cleanup.
 
 # 12-24-2007    Thomas Kishel
@@ -70,4 +70,12 @@ Revision History
 
 	Added tests to avoid "Use of uninitialized value" warnings. 
 	
-	Naoki URAI
+# 05-08-2008    Thomas Kishel
+
+	Rebuilt Makefile.PL and META.yml.
+
+# 07-09-2008	Thomas Kishel
+
+	# Remember to export COPYFILE_DISABLE=true before tar on MacOSX 10.5.
+	Purged HFS meta-files.
+

@@ -2,9 +2,10 @@ Changes
 MANIFEST
 META.yml
 Makefile.PL
-Multiplex.pm
+lib/DBD/Multiplex.pm
 README
-example.pl
+other/example.pl
+other/test.pl
 t/test.t
-test.pl
+
 
