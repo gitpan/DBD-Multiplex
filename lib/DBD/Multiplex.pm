@@ -1,7 +1,7 @@
 #########1#########2#########3#########4#########5#########6#########7#########8
 # vim: ts=8:sw=4
 #
-# $Id: Multiplex.pm,v 2.09 2002/11/11 00:01:01 timbo Exp $
+# $Id: Multiplex.pm,v 2.10 2002/11/11 00:01:01 timbo Exp $
 #
 # Copyright (c) 1999,2008 Tim Bunce & Thomas Kishel
 #
@@ -19,7 +19,7 @@ use DBI;
 use strict;
 use vars qw($VERSION $drh $err $errstr $sqlstate);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 2.09 $ =~ /(\d+)\.(\d+)/o);
+$VERSION = sprintf("%d.%02d", q$Revision: 2.10 $ =~ /(\d+)\.(\d+)/o);
 
 $drh = undef;	# Holds driver handle once it has been initialized.
 $err = 0;		# Holds error code for $DBI::err.
@@ -569,8 +569,11 @@ sub DESTROY {
 # Used by AUTOLOAD below. Omit 'prepare'.
 ########################################
 
-my %db_methods = %{$DBI::DBI_methods{db}};
-delete($db_methods{'prepare'});
+my %db_methods;
+BEGIN {
+	%db_methods = %{$DBI::DBI_methods{db}};
+	delete($db_methods{'prepare'});
+}
 use subs keys %db_methods;
 
 ######################################## 

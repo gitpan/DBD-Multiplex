@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile (
 		'NAME'			=> 'DBD::Multiplex',
-		'VERSION_FROM'	=> 'lib/DBD/Multiplex.pm',
+		'VERSION_FROM'		=> 'lib/DBD/Multiplex.pm',
 		'AUTHOR'		=> 'Thomas Kishel <tkishel+perl@gmail.com>',
 		'PREREQ_PM'		=> { DBI::DBD => 1 },
 );

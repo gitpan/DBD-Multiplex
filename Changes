@@ -76,6 +76,18 @@ Revision History
 
 # 07-09-2008	Thomas Kishel
 
-	# Remember to export COPYFILE_DISABLE=true before tar on MacOSX 10.5.
 	Purged HFS meta-files.
+	http://we.hates-software.com/index_6.html
+
+# 01-18-2010	Jeff Weisberg
+
+	Corrected AUTOLOAD handler.
+	
+	"Multiplex uses an AUTOLOAD handler to "proxy" many methods,
+	but it is not being called because DBI thinks the methods
+	are not implemented."
+	
+	"Fixed DBI dispatch to not try to use AUTOLOAD for driver methods 
+	unless the method has been declared (as methods should be when using AUTOLOAD)."
+
 
