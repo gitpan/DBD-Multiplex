@@ -90,4 +90,11 @@ Revision History
 	"Fixed DBI dispatch to not try to use AUTOLOAD for driver methods 
 	unless the method has been declared (as methods should be when using AUTOLOAD)."
 
+# 01-26-2010	Thomas Kishel
+
+	COPY_EXTENDED_ATTRIBUTES_DISABLE now COPYFILE_DISABLE
+	Thanks, Apple!
+	export COPYFILE_DISABLE=true
+	tar --exclude *.DS_Store -cvzf DBD-Multiplex-2.10.tar.gz DBD-Multiplex
+
 
